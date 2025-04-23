@@ -5,11 +5,9 @@ from dataclasses import dataclass
 import urllib.request
 
 
-user_agent = 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:137.0) Gecko/20100101 Firefox/137.0'
-
-
 @dataclass
 class CardGrabber:
+
     soup: BeautifulSoup
     word: str
     pos: str
@@ -20,25 +18,6 @@ class CardGrabber:
     definitions: list = None
     ru: str = None
     src_images: list = None
-
-    def get_html(self, url: str):
-
-        # user_agent = 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:137.0) Gecko/20100101 Firefox/137.0'
-        # values = {'accept': 'image/avif,image/webp,image/png,image/svg+xml,image/*;q=0.8,*/*;q=0.5',
-        #           'accept-encoding': 'gzip, deflate, br, zstd',
-        #           'accept-language': 'ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3'}
-        # headers = {'User-Agent': user_agent}
-        #
-        # data = urllib.parse.urlencode(values)
-        # data = data.encode('ascii')
-        # req = urllib.request.Request(url, data, headers)
-        #
-        # with urllib.request.urlopen(req) as response:
-        #     the_page = response.read()
-        # return the_page
-        pass
-
-
 
     def __str__(self):
         return (f"word: {self.word}"
@@ -57,17 +36,18 @@ class OxfordDict(CardGrabber):
     Grabber from Oxford Learners Dictionary.
 
     """
-    url = 'https://www.oxfordlearnersdictionaries.com/definition/english/'
+    url_parse = urlparse('https://www.oxfordlearnersdictionaries.com/definition/american_english/')
 
-    def __init__(self, word):
+    def __init__(self, word, driver):
 
-        url = urllib.parse.urljoin(CambridgeDict.url_parse.geturl(), word)
+        url = urllib.parse.urljoin(OxfordDict.url_parse.geturl(), word)
 
-        markup = self.get_html(url)
+        driver.get(url)
+        markup = driver.page_source
 
         self.soup = BeautifulSoup(markup, "html.parser")
 
-        webtop = self.soup.find('div', { 'class': 'webtop-g'})
+        webtop = self.soup.find('div', { 'class': 'top-container'})
 
         self.word = webtop.find('h2', class_='h').get_text()
         self.pos = webtop.find('span', class_='pos').get_text()
@@ -104,11 +84,12 @@ class CambridgeDict(CardGrabber):
 
     url_parse = urlparse('https://dictionary.cambridge.org/dictionary/english/')
 
-    def __init__(self, word):
+    def __init__(self, word, driver):
 
         url = urllib.parse.urljoin(CambridgeDict.url_parse.geturl(), word)
 
-        markup = self.get_html(url)
+        driver.get(url)
+        markup = driver.page_source
 
         self.soup = BeautifulSoup(markup, "html.parser")
 
@@ -147,7 +128,3 @@ class CambridgeDict(CardGrabber):
             self.ru = body.find('span', {'lang': 'ru'}).get_text()
         except AttributeError:
             pass
-
-
-if __name__ == '__main__':
-    pass
