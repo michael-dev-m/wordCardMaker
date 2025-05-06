@@ -1,0 +1,18 @@
+<main>
+    <script>document.getElementById('Deck').innerHTML="{{Deck}}".replace("::"," &minus; ");</script>
+
+    <img src={{Images}} alt='What is it?'/>
+    <div >
+        <span>{{cloze:Word}}</span>
+        <span>{{PartOfSpeech}} </span>
+        <span>{{Definition}}</span>
+    </div>
+    <div ><span>{{cloze:Examples}}</span></div>
+
+    {{type:cloze:Definition}}
+
+    <!hr id=answer>
+
+    <div ><span>{{Translate}}</span></div>
+    <div ><span>{{AudioUS}}</span></div>
+</main>
