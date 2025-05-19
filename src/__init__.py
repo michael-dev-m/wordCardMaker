@@ -30,7 +30,7 @@ def get_config():
         return json.load(f)
 
 
-def get_template(filename):
+def load_file_from_templates_folder(filename):
     with open(os.path.join(template_dir, filename), 'r') as f:
         return f.read()
 
@@ -77,8 +77,8 @@ def get_or_create_note_model():
     model['latex_post'] = DEFAULT_LATEX_POST
 
     # Create fields
-    fields = ["Word", "Images", "PartOfSpeech", "Definition", "Translate", "Examples",
-              "PronUK", "AudioUK", "PronUS", "AudioUS", "Source"]
+    fields = ["Word", "Images", "PartOfSpeech", "Definition", "Examples", "Audio",
+              "Translate", "PronUK", "AudioUK", "PronUS", "AudioUS", "Source"]
     for field in fields:
         field_dict = mw.col.models.new_field(field)
         mw.col.models.add_field(model, field_dict)
@@ -86,13 +86,13 @@ def get_or_create_note_model():
     templates = [
         {
             'name': 'Cloze Card',
-            'qfmt': get_template("complete_sentences_front.xml"),
-            'afmt': get_template("complete_sentences_back.xml")
+            'qfmt': load_file_from_templates_folder("complete_sentences_front.xml"),
+            'afmt': load_file_from_templates_folder("complete_sentences_back.xml")
         }
     ]
 
     model['tmpls'] = templates
-    model['css'] = get_template("styles.css")
+    model['css'] = load_file_from_templates_folder("styles.css")
 
     # Add the model into collection
     mw.col.models.add(model)
@@ -128,6 +128,20 @@ def handle_duplicate_word(word, deck_id):
     return True, None  # Return True but no note ID means skip
 
 
+def get_cambridge_cards(word: str):
+
+    main_cards = CambridgeDict(word, dictionary_type='en-ru').cards
+    donor_cards = CambridgeDict(word, dictionary_type='en').cards
+    langeek_cards = LanGeekDict(word).cards
+    for main_card in main_cards:
+        for donor_card in donor_cards:
+            main_card.fill_out_pron_us_block(donor_card)
+            main_card.add_images_equal_pos(donor_card)
+        for langeek_card in langeek_cards:
+            main_card.add_images_equal_pos(langeek_card)
+    return main_cards
+
+
 def add_word(word):
     """
     Add a word to Anki deck.
@@ -143,25 +157,18 @@ def add_word(word):
             if not note_id:  # User chose to skip
                 return
 
-        main_cards = CambridgeDict(word, dictionary_type='en-ru').cards
-        donor_cards = CambridgeDict(word, dictionary_type='en').cards
-        langeek_cards = LanGeekDict(word).cards
-        for main_card in main_cards:
-            for donor_card in donor_cards:
-                main_card.fill_out_pron_us_block(donor_card)
-                main_card.add_images_equal_pos(donor_card)
-            for langeek_card in langeek_cards:
-                main_card.add_images_equal_pos(langeek_card)
+        cards = get_cambridge_cards(word)
 
-        if not main_cards:
+        if not cards:
             raise Exception("No data found for word")
 
-        for card in main_cards:
+        for card in cards:
             if note_id:  # Update existing note
                 note = mw.col.get_note(note_id)
             else:  # Create new note
                 note = Note(mw.col, model)
 
+            # make an insert {{c1: word}} for the fields of Definition and Examples
             card.cloze_anki()
 
             # Map data to note fields
@@ -180,19 +187,21 @@ def add_word(word):
 
             note.fields[3] = card.definitions[0]  # Definitions
 
-            note.fields[4] = card.ru[0]  # Translate
+            note.fields[4] = card.examples[0]  # Examples
 
-            note.fields[5] = card.examples[0]  # Examples
+            note.fields[5] = ' ' # Audio
 
-            note.fields[6] = card.pron_uk  # PronUK
+            note.fields[6] = card.ru[0]  # Translate
 
-            note.fields[7] = f"[sound:{download_file(card.src_uk_mp3, mw.col.media.dir(), f'{card.word}_uk.mp3')}]"  # AudioUK
+            note.fields[7] = card.pron_uk  # PronUK
 
-            note.fields[8] = card.pron_us  # PronUS
+            note.fields[8] = f"[sound:{download_file(card.src_uk_mp3, mw.col.media.dir(), f'{card.word}_uk.mp3')}]"  # AudioUK
 
-            note.fields[9] = f"[sound:{download_file(card.src_us_mp3, mw.col.media.dir(), f'{card.word}_us.mp3')}]"  # AudioUS
+            note.fields[9] = card.pron_us  # PronUS
 
-            note.fields[10] = card.source  # Source
+            note.fields[10] = f"[sound:{download_file(card.src_us_mp3, mw.col.media.dir(), f'{card.word}_us.mp3')}]"  # AudioUS
+
+            note.fields[11] = card.source  # Source
 
             note.tags = [card.pos, card.word[0], card.word[:2]]  # Tags
 

@@ -2,7 +2,10 @@
     <script>document.getElementById('Deck').innerHTML="{{Deck}}".replace("::"," &minus; ");</script>
 
     {{Images}}
-    <div><span>{{cloze:Definition}}</span></div>
+    <div>
+        <span>{{cloze:Definition}}</span>
+        <a href="{{Source}}">(Source)</a>
+    </div>
     <div><span>{{cloze:Examples}}</span></div>
 
     {{type:cloze:Definition}}
