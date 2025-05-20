@@ -184,10 +184,15 @@ def add_word(word):
                 note.fields[1] = SEPARATOR_IMG.join([f'<img src="{f}">' for f in filenames])
 
             note.fields[2] = card.pos  # PartOfSpeech
+            # This method in the examples and def fields encloses the search word in curly brackets {{c1::word}}.
+            card.cloze_anki()
 
             note.fields[3] = card.definitions[0]  # Definitions
 
-            note.fields[4] = card.examples[0]  # Examples
+            def get_unordered_list(lst):
+                return f"<ul><li>{'</li><li>'.join(lst)}</li></ul>" if len(lst) > 0 else ''
+
+            note.fields[4] = get_unordered_list(card.examples[0])  # Examples
 
             note.fields[5] = ' ' # Audio
 

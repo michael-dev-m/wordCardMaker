@@ -2,15 +2,17 @@ import re
 import os
 import time
 from bs4 import BeautifulSoup
-from urllib.parse import urlparse, quote, urljoin
+from urllib.parse import urlparse, urljoin
 from dataclasses import dataclass
 import requests
 from requests import Session
+
 
 LIMIT_OF_DEF = 3
 LIMIT_OF_THE_SAME_WORDS = 3
 
 endings = ['ing', 'ily', 'ly', 'es', 'ed', 's', 'd', 'e', 'y']
+
 
 @dataclass
 class Card:
@@ -27,32 +29,6 @@ class Card:
     ru: list = None
     src_images: list = None
 
-    def fill_out_pron_uk(self, donor):
-        if not self.pron_uk:
-            self.pron_uk = donor.pron_uk
-
-    def fill_out_src_uk_mp3(self, donor):
-        if not self.src_uk_mp3:
-            self.src_uk_mp3 = donor.src_uk_mp3
-
-    def fill_out_pron_uk_block(self, donor):
-        if not self.src_uk_mp3 or not self.pron_uk:
-            self.pron_uk = donor.pron_uk
-            self.src_uk_mp3 = donor.src_uk_mp3
-
-    def fill_out_pron_us(self, donor):
-        if not self.pron_us:
-            self.pron_us = donor.pron_us
-
-    def fill_out_src_us_mp3(self, donor):
-        if not self.src_us_mp3:
-            self.src_us_mp3 = donor.src_us_mp3
-
-    def fill_out_pron_us_block(self, donor):
-        if not self.src_us_mp3 or not self.pron_us:
-            self.pron_us = donor.pron_us
-            self.src_us_mp3 = donor.src_us_mp3
-
     def add_images(self, donor):
         self.src_images.extend(donor.src_images)
 
@@ -63,16 +39,40 @@ class Card:
     def _pattern(self, prefix):
         return re.compile(r'\b(' + re.escape(prefix) + r'\w*)', re.IGNORECASE)
 
-    def _replacer(self, match):
+    def _replacer_c1(self, match):
         _word = match.group(1)
         return f"{{{{c1::{_word}}}}}"
 
     def cloze_anki(self):
+        """
+        This method in the examples field encloses the search word in double curly brackets
+        and adds {{c1::word::part of speech}} to the definition field.
+        For example: 'I thought he {{c1::handled}} the situation very well.'
+
+        """
         prefix = strip_ending(self.word)
         for i in range(len(self.definitions)):
             self.definitions[i] = f"{{{{c1::{self.word}::{self.pos}}}}} - {self.definitions[i]}"
+            lst = []
             for text in self.examples[i]:
-                self.examples[i] = self._pattern(prefix).sub(self._replacer, text)
+                 lst.append(self._pattern(prefix).sub(self._replacer_c1, text))
+            self.examples[i] = lst
+
+    def _replacer(self, match):
+        _word = match.group(1)
+        return f"{{{_word}}}"
+
+    def put_word_in_curly_brackets(self):
+        """
+        This method in the examples field encloses the search word in curly brackets.
+        For example: 'I thought he {handled} the situation very well.'
+        """
+        prefix = strip_ending(self.word)
+        for i in range(len(self.examples)):
+            lst = []
+            for text in self.examples[i]:
+                lst.append(self._pattern(prefix).sub(self._replacer, text))
+            self.examples[i] = lst
 
 
 def strip_ending(word):
@@ -309,7 +309,11 @@ class CambridgeDict:
         """
 
         word = element.find('div', class_='di-title').get_text()
-        pos = element.find('span', class_='pos dpos').get_text()
+        try:
+            pos = element.find('span', class_='pos dpos').get_text()
+        except AttributeError:
+            pos = element.find('div', class_='def ddef_d db').get_text()
+
         card = Card(word, pos, self.response.url)
 
         try:
@@ -327,6 +331,9 @@ class CambridgeDict:
             card.pron_us = blok_us.find('span', class_='pron dpron').get_text(strip=True)
         except AttributeError:
             pass
+        # if there is no American transcription, let's take British
+        if not card.pron_us and card.pron_uk:
+            card.pron_us = card.pron_uk
 
         # block contains the definition and the examples
         blocks = element.find_all('div', class_='def-block ddef_block', limit=LIMIT_OF_DEF)
