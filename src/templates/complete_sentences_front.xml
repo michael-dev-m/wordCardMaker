@@ -1,12 +1,15 @@
 <main>
-    <script>document.getElementById('Deck').innerHTML="{{Deck}}".replace("::"," &minus; ");</script>
+<script>
+  const container1 = document.getElementById('cloze_example');
+  container1.innerHTML = container1.innerHTML.replace(/\{.*?\}/g, '...');
+</script>
 
-    {{Images}}
-    <div>
-        <span>{{cloze:Definition}}</span>
+{{Images}}
+<div>
+    <span>... [{{PartOfSpeech}}] - {{Definition}}
         <a href="{{Source}}">(Source)</a>
-    </div>
-    <div><span>{{cloze:Examples}}</span></div>
-
-    {{type:cloze:Definition}}
+    </span>
+</div>
+<div><span id="cloze_example">{{Examples}}</span></div>
+{{type:Word}}
 </main>

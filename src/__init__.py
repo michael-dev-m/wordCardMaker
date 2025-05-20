@@ -10,11 +10,7 @@ from .forms.add_words import AddWordsDialog
 from .parser.parser import CambridgeDict, LanGeekDict, download_file
 
 
-CLOZE = 1
-DEFAULT_LATEX_PRE = ('\\documentclass[12pt]{article}\n\\special{papersize=3in,5in}\n\\usepackage[utf8]{inputenc}\n'
-                     + '\\usepackage{amssymb,amsmath}\n\\pagestyle{empty}\n\\setlength{\\parindent}{0in}\n'
-                     + '\\begin{document}\n')
-DEFAULT_LATEX_POST = '\\end{document}'
+BASIC = 0
 
 AVAILABLE_IMAGE = '_available.jpg'
 SEPARATOR_IMG = '&nbsp;'
@@ -72,9 +68,7 @@ def get_or_create_note_model():
     model = mw.col.models.new(model_name)
 
     # Set model type
-    model['type'] = CLOZE
-    model['latex_pre'] = DEFAULT_LATEX_PRE
-    model['latex_post'] = DEFAULT_LATEX_POST
+    model['type'] = BASIC
 
     # Create fields
     fields = ["Word", "Images", "PartOfSpeech", "Definition", "Examples", "Audio",
@@ -85,9 +79,14 @@ def get_or_create_note_model():
 
     templates = [
         {
-            'name': 'Cloze Card',
+            'name': 'Complete Sentences',
             'qfmt': load_file_from_templates_folder("complete_sentences_front.xml"),
             'afmt': load_file_from_templates_folder("complete_sentences_back.xml")
+        },
+        {
+            'name': 'Listening Card',
+            'qfmt': load_file_from_templates_folder("listening_front.xml"),
+            'afmt': load_file_from_templates_folder("listening_back.xml")
         }
     ]
 
@@ -128,17 +127,27 @@ def handle_duplicate_word(word, deck_id):
     return True, None  # Return True but no note ID means skip
 
 
-def get_cambridge_cards(word: str):
+def get_cambridge_cards(query: str):
 
-    main_cards = CambridgeDict(word, dictionary_type='en-ru').cards
-    donor_cards = CambridgeDict(word, dictionary_type='en').cards
-    langeek_cards = LanGeekDict(word).cards
+    # get main meaning from English-Russian Cambridge Dictionary
+    main_cards = CambridgeDict(query, dictionary_type='en-ru').cards
+
+    if main_cards:
+        # take pictures from English Cambridge Dictionary
+        donor_cards = CambridgeDict(query, dictionary_type='en').cards
+        for main_card in main_cards:
+            for donor_card in donor_cards:
+                main_card.add_images_equal_pos(donor_card)
+    else:
+        # get main meaning from English Cambridge Dictionary
+        main_cards = CambridgeDict(query, dictionary_type='en').cards
+
+    langeek_cards = LanGeekDict(query).cards
+    # take pictures from LanGeek
     for main_card in main_cards:
-        for donor_card in donor_cards:
-            main_card.fill_out_pron_us_block(donor_card)
-            main_card.add_images_equal_pos(donor_card)
         for langeek_card in langeek_cards:
             main_card.add_images_equal_pos(langeek_card)
+
     return main_cards
 
 
@@ -168,9 +177,6 @@ def add_word(word):
             else:  # Create new note
                 note = Note(mw.col, model)
 
-            # make an insert {{c1: word}} for the fields of Definition and Examples
-            card.cloze_anki()
-
             # Map data to note fields
             note.fields[0] = card.word  # Word
 
@@ -187,7 +193,12 @@ def add_word(word):
 
             note.fields[3] = card.definitions[0]  # Definitions
 
-            note.fields[4] = card.examples[0]  # Examples
+            def get_unordered_list(lst):
+                return f"<ul><li>{'</li><li>'.join(lst)}</li></ul>" if len(lst) > 0 else ''
+            # This method in the examples field encloses the search word in curly brackets.
+            card.put_word_in_curly_brackets()
+
+            note.fields[4] = get_unordered_list(card.examples[0])  # Examples
 
             note.fields[5] = ' ' # Audio
 

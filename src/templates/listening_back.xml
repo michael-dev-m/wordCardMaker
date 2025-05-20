@@ -1,24 +1,20 @@
 <main>
+<script>document.getElementById('Deck').innerHTML="{{Deck}}".replace("::"," &minus; ");</script>
 <script>
   const container2 = document.getElementById('example');
   container2.innerHTML = container2.innerHTML.replace(/\{(.*?)\}/g, '<span style="color: blue;">$1</span>');
 </script>
-
-{{Images}}
-<div>
-    <span>{{Word}} [{{PartOfSpeech}}] - {{Definition}}
-        <a href="{{Source}}">(Source)</a>
-    </span>
-</div>
-<div>
-    <span id="example">{{Examples}}</span>
-    <span>{{Audio}}</span>
-</div>
-<hr id="answer">
-{{type:Word}}
 <div>
     <span>{{PronUS}}</span>
     <span>{{AudioUS}}</span>
 </div>
-<div><span>{{Translate}}</span></div>
+{{type:Word}}
+
+<!hr id=answer>
+
+<div>{{Images}}</div>
+<div>
+    <span id="example">{{Examples}}</span>
+    <span>{{Audio}}</span>
+</div>
 </main>

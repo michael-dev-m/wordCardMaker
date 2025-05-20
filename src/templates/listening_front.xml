@@ -1,0 +1,7 @@
+<main>
+<script>document.getElementById('Deck').innerHTML="{{Deck}}".replace("::"," &minus; ");</script>
+<div>
+    <span>{{AudioUS}}</span>
+</div>
+{{type:Word}}
+</main>
