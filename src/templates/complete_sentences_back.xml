@@ -1,20 +1,24 @@
 <main>
-    <script>document.getElementById('Deck').innerHTML="{{Deck}}".replace("::"," &minus; ");</script>
+<script>document.getElementById('Deck').innerHTML="{{Deck}}".replace("::"," &minus; ");</script>
 
-    {{Images}}
-    <div>
-        <span>{{cloze:Definition}}</span>
+{{Images}}
+<div>
+    <span>{{cloze:Definition}}
         <a href="{{Source}}">(Source)</a>
-    </div>
-    <div>
-        <span>{{cloze:Examples}}</span>
-        <span>{{Audio}}</span>
-    </div>
+    </span>
+</div>
+<div>
+    <span>{{cloze:Examples}}</span>
+    <span>{{Audio}}</span>
+</div>
 
-    {{type:cloze:Definition}}
+{{type:cloze:Definition}}
 
-    <!hr id=answer>
+<!hr id=answer>
 
-    <div><span>{{AudioUS}}</span></div>
-    <div><span>{{Translate}}</span></div>
+<div>
+    <span>{{PronUS}}</span>
+    <span>{{AudioUS}}</span>
+</div>
+<div><span>{{Translate}}</span></div>
 </main>

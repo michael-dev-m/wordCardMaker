@@ -24,9 +24,7 @@ class Card:
     pron_uk: str = None
     src_us_mp3: str = None
     pron_us: str = None
-    definitions: list = None
-    examples: list = None
-    ru: list = None
+    data: list = None   #[{'definition': str, 'examples': [], 'translate': str}, {}]
     src_images: list = None
 
     def add_images(self, donor):
@@ -51,12 +49,16 @@ class Card:
 
         """
         prefix = strip_ending(self.word)
-        for i in range(len(self.definitions)):
-            self.definitions[i] = f"{{{{c1::{self.word}::{self.pos}}}}} - {self.definitions[i]}"
-            lst = []
-            for text in self.examples[i]:
-                 lst.append(self._pattern(prefix).sub(self._replacer_c1, text))
-            self.examples[i] = lst
+        for i in range(len(self.data)):
+            try:
+                self.data[i]['definition'] = f"{{{{c1::{self.word}::{self.pos}}}}} - {self.data[i]['definition']}"
+            except KeyError:
+                self.data[i]['definition'] = f"{{{{c1::{self.word}::{self.pos}}}}} "
+            try:
+                self.data[i]['examples'] = [self._pattern(prefix).sub(self._replacer_c1, text) for text in
+                                            self.data[i]['examples']]
+            except KeyError:
+                self.data[i]['examples'] = []
 
     def _replacer(self, match):
         _word = match.group(1)
@@ -68,11 +70,12 @@ class Card:
         For example: 'I thought he {handled} the situation very well.'
         """
         prefix = strip_ending(self.word)
-        for i in range(len(self.examples)):
-            lst = []
-            for text in self.examples[i]:
-                lst.append(self._pattern(prefix).sub(self._replacer, text))
-            self.examples[i] = lst
+        for i in range(len(self.data)):
+            try:
+                self.data[i]['examples'] = [self._pattern(prefix).sub(self._replacer, text) for text in
+                                            self.data[i]['examples']]
+            except KeyError:
+                self.data[i]['examples'] = []
 
 
 def strip_ending(word):
@@ -163,6 +166,9 @@ class OxfordDict:
             "Upgrade-Insecure-Requests": "1",
             "Cache-Control": "max-age=0"
         })
+        self.fetch_cards(word, dictionary_type)
+
+    def fetch_cards(self, word, dictionary_type='en'):
         url = self._make_url(word, dictionary_type)
         self.get_soup(url)
         self.make_cards()
@@ -220,19 +226,21 @@ class OxfordDict:
             return tag.name == 'li' and tag.has_attr('id')
 
         blocks = main_container.find_all(has_li_and_id, limit=LIMIT_OF_DEF)
-        card.definitions = []
-        card.examples = []
+        card.data = []
         for block in blocks:
-
-            definition = block.find('span', class_='def').get_text()
-
-            card.definitions.append(definition)
+            data = dict()
             try:
-                examples = [x.get_text() for x in block.find_all('span', class_='x')]
+                data['definition'] = block.find('span', class_='def').get_text()
             except AttributeError:
-                card.examples.append([])
-            else:
-                card.examples.append(examples)
+                data['definition'] = block.find('span', class_='xrefs').get_text()
+
+            try:
+                data['examples'] = [x.get_text() for x in block.find_all('span', class_='x')]
+            except AttributeError:
+                data['examples'] = []
+
+            data['translate'] = ''
+            card.data.append(data)
 
         try:
             src_img = self.soup.find('img', class_='thumb').get('src')
@@ -264,6 +272,9 @@ class CambridgeDict:
             "Upgrade-Insecure-Requests": "1",
             "Cache-Control": "max-age=0"
         })
+        self.fetch_cards(word, dictionary_type)
+
+    def fetch_cards(self, word, dictionary_type='en'):
         self.response = fetch_with_redirects(session=self.session,
                                              url=self._make_url(word, dictionary_type)
                                              )
@@ -278,7 +289,8 @@ class CambridgeDict:
         return urljoin(url_with_path, word.replace(' ', '-'))
 
     def make_cards(self):
-
+        # there are some dictionaries on a page of english dictionary
+        # so we take only first
         first_dictionary = self.soup.find('div', {'class': 'pr dictionary'})
         if first_dictionary:
             # for a page of english dictionary
@@ -337,25 +349,23 @@ class CambridgeDict:
 
         # block contains the definition and the examples
         blocks = element.find_all('div', class_='def-block ddef_block', limit=LIMIT_OF_DEF)
-        card.definitions = []
-        card.examples = []
-        card.ru = []
+        card.data = []
         for block in blocks:
-            card.definitions.append(block.find('div', {'class': 'def ddef_d db'}).get_text())
-            try:
-                examps = block.find_all('div', class_='examp dexamp')
-                examples = []
-                for examp in examps:
-                    examples.append(examp.get_text())
-            except AttributeError:
-                card.examples.append([])
-            else:
-                card.examples.append(examples)
+            data = dict()
+            data['definition'] = block.find('div', {'class': 'def ddef_d db'}).get_text()
 
             try:
-                card.ru.append(block.find('span', {'lang': 'ru'}).get_text())
+                examps = block.find_all('div', class_='examp dexamp')
+                data['examples'] = [examp.get_text() for examp in examps]
             except AttributeError:
-                pass
+                data['examples'] = []
+
+            try:
+                data['translate'] = block.find('span', {'lang': 'ru'}).get_text()
+            except AttributeError:
+                data['translate'] = ''
+
+            card.data.append(data)
 
         try:
             card.src_images = []
@@ -406,15 +416,6 @@ class LanGeekDict:
     def __init__(self, word: str):
 
         self.cards = []
-        self.session = requests.Session()
-        self.session.headers.update({
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.5",
-            "Connection": "keep-alive",
-            "Upgrade-Insecure-Requests": "1",
-            "Cache-Control": "max-age=0"
-        })
         self.response_json = self.fetch_point(word)
         self.make_cards()
 
@@ -432,7 +433,7 @@ class LanGeekDict:
                         self.cards.append(Card(word=item["entry"],
                                                pos=pos,
                                                source= url,
-                                               definitions=[meaning["translation"]],
+                                               data=[{'definition': meaning["translation"]}],
                                                src_images=[meaning["wordPhoto"]["photo"]]
                                                )
                                           )
@@ -442,10 +443,13 @@ class LanGeekDict:
                         pass
 
     def fetch_point(self, word):
-        response = self.session.get(self.__class__.api_url,
-                                    params={"term": word,
-                                            "filter": ",inCategory,photo"}
-                                    )
+        response = requests.get(self.__class__.api_url,
+                                params={"term": word,
+                                        "filter": ",inCategory,photo"},
+                                stream=True,
+                                timeout=5,
+                                allow_redirects=False,
+                                )
         if response.status_code == 200:
             return response.json()
         else:

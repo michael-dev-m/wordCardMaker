@@ -128,17 +128,30 @@ def handle_duplicate_word(word, deck_id):
     return True, None  # Return True but no note ID means skip
 
 
-def get_cambridge_cards(word: str):
+def get_cambridge_cards(query: str):
 
-    main_cards = CambridgeDict(word, dictionary_type='en-ru').cards
-    donor_cards = CambridgeDict(word, dictionary_type='en').cards
-    langeek_cards = LanGeekDict(word).cards
+    # get main meaning from English-Russian Cambridge Dictionary
+    parser = CambridgeDict(query, dictionary_type='en-ru')
+    main_cards = parser.cards
+
+    if main_cards:
+        # take pictures from English Cambridge Dictionary
+        parser.fetch_cards(query, dictionary_type='en')
+        donor_cards = parser.cards
+
+        for main_card in main_cards:
+            for donor_card in donor_cards:
+                main_card.add_images_equal_pos(donor_card)
+    else:
+        # get main meaning from English Cambridge Dictionary
+        main_cards = CambridgeDict(query, dictionary_type='en').cards
+
+    langeek_cards = LanGeekDict(query).cards
+    # take pictures from LanGeek
     for main_card in main_cards:
-        for donor_card in donor_cards:
-            main_card.fill_out_pron_us_block(donor_card)
-            main_card.add_images_equal_pos(donor_card)
         for langeek_card in langeek_cards:
             main_card.add_images_equal_pos(langeek_card)
+
     return main_cards
 
 
@@ -184,19 +197,19 @@ def add_word(word):
                 note.fields[1] = SEPARATOR_IMG.join([f'<img src="{f}">' for f in filenames])
 
             note.fields[2] = card.pos  # PartOfSpeech
-            # This method in the examples and def fields encloses the search word in curly brackets {{c1::word}}.
-            card.cloze_anki()
 
-            note.fields[3] = card.definitions[0]  # Definitions
+            block = card.data[0]
+
+            note.fields[3] = block['definition']  # Definitions
 
             def get_unordered_list(lst):
                 return f"<ul><li>{'</li><li>'.join(lst)}</li></ul>" if len(lst) > 0 else ''
 
-            note.fields[4] = get_unordered_list(card.examples[0])  # Examples
+            note.fields[4] = get_unordered_list(block['examples'])  # Examples
 
             note.fields[5] = ' ' # Audio
 
-            note.fields[6] = card.ru[0]  # Translate
+            note.fields[6] = block['translate']  # Translate
 
             note.fields[7] = card.pron_uk  # PronUK
 
