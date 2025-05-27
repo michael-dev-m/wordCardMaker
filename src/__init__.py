@@ -35,12 +35,25 @@ def load_file_from_templates_folder(filename):
         return f.read()
 
 
-def get_or_create_deck():
+def get_definition_limit(config: dict):
+
+    try:
+        definition_limit = int(config["definition_limit"])
+    except ValueError:
+        return 1
+    except TypeError:
+        return 1
+    except KeyError:
+        return 1
+    else:
+        return definition_limit if definition_limit > 1 else 1
+
+
+def get_or_create_deck(config: dict):
     """
     Get or create the Dictionary deck.
 
     """
-    config = get_config()
     deck_name = config["deck_name"]
     deck_id = mw.col.decks.id(deck_name)
     deck = mw.col.decks.get(deck_id)
@@ -53,12 +66,11 @@ def available_image_is_media(filename):
         shutil.copy(os.path.join(template_dir, filename),
                     mw.col.media.dir())
 
-def get_or_create_note_model():
+def get_or_create_note_model(config: dict):
     """
     Get or create the note model for Dictionary cards.
 
     """
-    config = get_config()
     model_name = config["model_name"]
 
     model = mw.col.models.by_name(model_name)
@@ -128,10 +140,10 @@ def handle_duplicate_word(word, deck_id):
     return True, None  # Return True but no note ID means skip
 
 
-def get_cambridge_cards(query: str):
+def get_cambridge_cards(query: str, def_limit: int):
 
     # get main meaning from English-Russian Cambridge Dictionary
-    parser = CambridgeDict(query, dictionary_type='en-ru')
+    parser = CambridgeDict(query, dictionary_type='en-ru', definition_limit=def_limit)
     main_cards = parser.cards
 
     if main_cards:
@@ -144,7 +156,7 @@ def get_cambridge_cards(query: str):
                 main_card.add_images_equal_pos(donor_card)
     else:
         # get main meaning from English Cambridge Dictionary
-        main_cards = CambridgeDict(query, dictionary_type='en').cards
+        main_cards = CambridgeDict(query, dictionary_type='en', definition_limit=def_limit).cards
 
     langeek_cards = LanGeekDict(query).cards
     # take pictures from LanGeek
@@ -155,14 +167,57 @@ def get_cambridge_cards(query: str):
     return main_cards
 
 
+def fill_fields_out(note, card, index=0):
+
+    note.fields[0] = card.word  # Word
+
+    if not card.src_images:
+        note.fields[1] = f'<img src="{AVAILABLE_IMAGE}">'
+    else:
+        filenames = []
+        for url in card.src_images:
+            filename = f"{card.word}_{card.pos}_{''.join(char for char in url if char.isdigit())}.jpeg"
+            filenames.append(download_file(url, mw.col.media.dir(), filename))
+        note.fields[1] = SEPARATOR_IMG.join([f'<img src="{f}">' for f in filenames])
+
+    note.fields[2] = card.pos  # PartOfSpeech
+
+    block = card.data[index]
+
+    note.fields[3] = block['definition']  # Definitions
+
+    def get_unordered_list(lst):
+        return f"<ul><li>{'</li><li>'.join(lst)}</li></ul>" if len(lst) > 0 else ''
+
+    note.fields[4] = get_unordered_list(block['examples'])  # Examples
+
+    note.fields[5] = ' '  # Audio
+
+    note.fields[6] = block['translate']  # Translate
+
+    note.fields[7] = card.pron_uk  # PronUK
+
+    note.fields[8] = f"[sound:{download_file(card.src_uk_mp3, mw.col.media.dir(), f'{card.word}_uk.mp3')}]"  # AudioUK
+
+    note.fields[9] = card.pron_us  # PronUS
+
+    note.fields[10] = f"[sound:{download_file(card.src_us_mp3, mw.col.media.dir(), f'{card.word}_us.mp3')}]"  # AudioUS
+
+    note.fields[11] = card.source  # Source
+
+    note.tags = [card.pos, card.word[0], card.word[:2]]  # Tags
+
+
 def add_word(word):
     """
     Add a word to Anki deck.
 
     """
     try:
-        deck = get_or_create_deck()
-        model = get_or_create_note_model()
+        config = get_config()
+        deck = get_or_create_deck(config)
+        model = get_or_create_note_model(config)
+        definition_limit = get_definition_limit(config)
 
         # Check for duplicates in the specific deck
         is_duplicate, note_id = handle_duplicate_word(word, deck['id'])
@@ -170,7 +225,7 @@ def add_word(word):
             if not note_id:  # User chose to skip
                 return
 
-        cards = get_cambridge_cards(word)
+        cards = get_cambridge_cards(word, definition_limit)
 
         if not cards:
             raise Exception("No data found for word")
@@ -185,43 +240,8 @@ def add_word(word):
             card.cloze_anki()
 
             # Map data to note fields
-            note.fields[0] = card.word  # Word
-
-            if not card.src_images:
-                note.fields[1] = f'<img src="{AVAILABLE_IMAGE}">'
-            else:
-                filenames = []
-                for url in card.src_images:
-                    filename = f"{card.word}_{card.pos}_{''.join(char for char in url if char.isdigit())}.jpeg"
-                    filenames.append(download_file(url, mw.col.media.dir(), filename))
-                note.fields[1] = SEPARATOR_IMG.join([f'<img src="{f}">' for f in filenames])
-
-            note.fields[2] = card.pos  # PartOfSpeech
-
-            block = card.data[0]
-
-            note.fields[3] = block['definition']  # Definitions
-
-            def get_unordered_list(lst):
-                return f"<ul><li>{'</li><li>'.join(lst)}</li></ul>" if len(lst) > 0 else ''
-
-            note.fields[4] = get_unordered_list(block['examples'])  # Examples
-
-            note.fields[5] = ' ' # Audio
-
-            note.fields[6] = block['translate']  # Translate
-
-            note.fields[7] = card.pron_uk  # PronUK
-
-            note.fields[8] = f"[sound:{download_file(card.src_uk_mp3, mw.col.media.dir(), f'{card.word}_uk.mp3')}]"  # AudioUK
-
-            note.fields[9] = card.pron_us  # PronUS
-
-            note.fields[10] = f"[sound:{download_file(card.src_us_mp3, mw.col.media.dir(), f'{card.word}_us.mp3')}]"  # AudioUS
-
-            note.fields[11] = card.source  # Source
-
-            note.tags = [card.pos, card.word[0], card.word[:2]]  # Tags
+            for index in range(len(card.data)):
+                fill_fields_out(note, card, index)
 
             if note_id:  # Update existing note
                 note.flush()
@@ -249,9 +269,9 @@ def add_from_dictionary():
 
 
 # Create a menu action
-action = QAction("Add from Dictionary", mw)
+action = QAction("Add from Cambridge Dictionary", mw)
 action.triggered.connect(add_from_dictionary)
-action.setToolTip("Add words from Dictionary")
+action.setToolTip("Add word from Cambridge Dictionary")
 
 # Add menu item to Tools menu
 mw.form.menuTools.addAction(action)

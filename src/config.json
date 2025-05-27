@@ -1,4 +1,5 @@
 {
     "deck_name": "English Dictionary",
-    "model_name": "Word Quizzes"
+    "model_name": "Word Quizzes",
+    "definition_limit": 3
 }

@@ -8,7 +8,6 @@ import requests
 from requests import Session
 
 
-LIMIT_OF_DEF = 3
 LIMIT_OF_THE_SAME_WORDS = 3
 
 endings = ['ing', 'ily', 'ly', 'es', 'ed', 's', 'd', 'e', 'y']
@@ -154,7 +153,8 @@ class OxfordDict:
                   'am-en': '/search/american_english/'}
     base_url = 'https://www.oxfordlearnersdictionaries.com/'
 
-    def __init__(self, word, dictionary_type='en'):
+    def __init__(self, word, dictionary_type='en', definition_limit = 1):
+        self.def_limit = definition_limit
         self.soup = BeautifulSoup()
         self.cards = []
         self.session = requests.Session()
@@ -225,7 +225,7 @@ class OxfordDict:
         def has_li_and_id(tag):
             return tag.name == 'li' and tag.has_attr('id')
 
-        blocks = main_container.find_all(has_li_and_id, limit=LIMIT_OF_DEF)
+        blocks = main_container.find_all(has_li_and_id, limit=self.def_limit)
         card.data = []
         for block in blocks:
             data = dict()
@@ -260,8 +260,8 @@ class CambridgeDict:
                   'en-ru': '/dictionary/english-russian/',}
     url_parse = urlparse('https://dictionary.cambridge.org/')
 
-    def __init__(self, word, dictionary_type='en-ru'):
-
+    def __init__(self, word, dictionary_type='en-ru', definition_limit=1):
+        self.def_limit = definition_limit
         self.cards = []
         self.session = requests.Session()
         self.session.headers.update({
@@ -348,7 +348,7 @@ class CambridgeDict:
             card.pron_us = card.pron_uk
 
         # block contains the definition and the examples
-        blocks = element.find_all('div', class_='def-block ddef_block', limit=LIMIT_OF_DEF)
+        blocks = element.find_all('div', class_='def-block ddef_block', limit=self.def_limit)
         card.data = []
         for block in blocks:
             data = dict()
