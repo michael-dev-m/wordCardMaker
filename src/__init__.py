@@ -169,7 +169,7 @@ def get_cambridge_cards(query: str, def_limit: int):
 
 def fill_fields_out(note, card, index=0):
 
-    note.fields[0] = card.word  # Word
+    note.fields[0] = f'{card.word}|{index + 1}|{card.pos}'  # Word
 
     if not card.src_images:
         note.fields[1] = f'<img src="{AVAILABLE_IMAGE}">'
@@ -205,7 +205,7 @@ def fill_fields_out(note, card, index=0):
 
     note.fields[11] = card.source  # Source
 
-    note.tags = [card.pos, card.word[0], card.word[:2]]  # Tags
+    note.tags = [card.pos, card.word[0]]  # Tags
 
 
 def add_word(word):
@@ -219,11 +219,11 @@ def add_word(word):
         model = get_or_create_note_model(config)
         definition_limit = get_definition_limit(config)
 
-        # Check for duplicates in the specific deck
-        is_duplicate, note_id = handle_duplicate_word(word, deck['id'])
-        if is_duplicate:
-            if not note_id:  # User chose to skip
-                return
+        # # Check for duplicates in the specific deck
+        # is_duplicate, note_id = handle_duplicate_word(word, deck['id'])
+        # if is_duplicate:
+        #     if not note_id:  # User chose to skip
+        #         return
 
         cards = get_cambridge_cards(word, definition_limit)
 
@@ -231,21 +231,15 @@ def add_word(word):
             raise Exception("No data found for word")
 
         for card in cards:
-            if note_id:  # Update existing note
-                note = mw.col.get_note(note_id)
-            else:  # Create new note
-                note = Note(mw.col, model)
-
             # make an insert {{c1: word}} for the fields of Definition and Examples
             card.cloze_anki()
 
-            # Map data to note fields
             for index in range(len(card.data)):
+                #  Create new note
+                note = Note(mw.col, model)
+                # Map data to note fields
                 fill_fields_out(note, card, index)
-
-            if note_id:  # Update existing note
-                note.flush()
-            else:  # Add new note
+                # Save new note
                 mw.col.add_note(note, deck["id"])
 
     except Exception as e:
