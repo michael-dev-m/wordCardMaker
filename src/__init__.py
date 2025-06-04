@@ -7,7 +7,7 @@ from aqt.utils import showInfo, showWarning, askUser
 from anki.notes import Note
 
 from .forms.add_words import AddWordsDialog
-from .parser.parser import CambridgeDict, LanGeekDict, download_file
+from .parser.parser import CambridgeDict, LanGeekDict, download_file, OxfordDict
 
 
 CLOZE = 1
@@ -140,6 +140,20 @@ def handle_duplicate_word(word, deck_id):
     return True, None  # Return True but no note ID means skip
 
 
+def add_pictures_from_langeek(query: str, cards: list):
+    langeek_cards = LanGeekDict(query).cards
+    # take pictures from LanGeek
+    for card in cards:
+        for langeek_card in langeek_cards:
+            card.add_images_equal_pos(langeek_card)
+
+
+def get_oxford_card(query: str, def_limit: int):
+    parser = OxfordDict(query, dictionary_type='am-en', definition_limit=def_limit)
+    add_pictures_from_langeek(query, parser.cards)
+    return parser.cards
+
+
 def get_cambridge_cards(query: str, def_limit: int):
 
     # get main meaning from English-Russian Cambridge Dictionary
@@ -158,11 +172,7 @@ def get_cambridge_cards(query: str, def_limit: int):
         # get main meaning from English Cambridge Dictionary
         main_cards = CambridgeDict(query, dictionary_type='en', definition_limit=def_limit).cards
 
-    langeek_cards = LanGeekDict(query).cards
-    # take pictures from LanGeek
-    for main_card in main_cards:
-        for langeek_card in langeek_cards:
-            main_card.add_images_equal_pos(langeek_card)
+    add_pictures_from_langeek(query, main_cards)
 
     return main_cards
 
@@ -193,7 +203,7 @@ def fill_fields_out(note, card, index=0):
 
     note.fields[5] = ' '  # Audio
 
-    note.fields[6] = block['translate']  # Translate
+    note.fields[6] = block.setdefault('translate', '')  # Translate
 
     note.fields[7] = card.pron_uk  # PronUK
 
@@ -208,7 +218,7 @@ def fill_fields_out(note, card, index=0):
     note.tags = [card.pos, card.word[0]]  # Tags
 
 
-def add_word(word):
+def add_word(word, dictionary_name):
     """
     Add a word to Anki deck.
 
@@ -225,7 +235,10 @@ def add_word(word):
         #     if not note_id:  # User chose to skip
         #         return
 
-        cards = get_cambridge_cards(word, definition_limit)
+        if dictionary_name == 'Oxford':
+            cards = get_oxford_card(word, definition_limit)
+        else:
+            cards = get_cambridge_cards(word, definition_limit)
 
         if not cards:
             raise Exception("No data found for word")
@@ -233,7 +246,7 @@ def add_word(word):
         for card in cards:
             # make an insert {{c1: word}} for the fields of Definition and Examples
             card.cloze_anki()
-
+            askUser(card.__repr__())
             for index in range(len(card.data)):
                 #  Create new note
                 note = Note(mw.col, model)
@@ -246,32 +259,52 @@ def add_word(word):
         raise Exception(f"Error adding word {word}: {str(e)}")
 
 
-def add_from_dictionary():
+def add_from_oxford_dictionary():
+    """
+        Handle the button click in main window.
+
+    """
+    dictionary_name = 'Oxford'
+    add_from_dictionary(dictionary_name)
+
+
+def add_from_cambridge_dictionary():
     """
     Handle the button click in main window.
 
     """
-    dialog = AddWordsDialog(mw)
+    dictionary_name = 'Cambridge'
+    add_from_dictionary(dictionary_name)
+
+
+def add_from_dictionary(dictionary_name):
+    dialog = AddWordsDialog(mw, dictionary_name)
     if dialog.exec():
         word = dialog.get_word()
         if word:
             try:
-                add_word(word)
-                showInfo(f"Successfully added '{word}'")
+                add_word(word, dictionary_name)
+                showInfo(f"Successfully added '{word}' from {dictionary_name} Dictionary.")
             except Exception as e:
                 showWarning(f"Error adding word: {str(e)}")
 
 
 # Create a menu action
 action = QAction("Add from Cambridge Dictionary", mw)
-action.triggered.connect(add_from_dictionary)
+action.triggered.connect(add_from_cambridge_dictionary)
 action.setToolTip("Add word from Cambridge Dictionary")
+
+action_oxford = QAction("Add from Oxford Dictionary", mw)
+action_oxford.triggered.connect(add_from_oxford_dictionary)
+action_oxford.setToolTip("Add word from Oxford Dictionary")
 
 # Add menu item to Tools menu
 mw.form.menuTools.addAction(action)
+mw.form.menuTools.addAction(action_oxford)
 
 # Create and add toolbar
-toolbar = QToolBar("Cambridge Dictionary")
+toolbar = QToolBar("Add from Dictionary")
 toolbar.addAction(action)
+toolbar.addAction(action_oxford)
 mw.addToolBar(toolbar)
 

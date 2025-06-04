@@ -4,24 +4,19 @@ import os
 import json
 
 class AddWordsDialog(QDialog):
-    def __init__(self, mw):
+    def __init__(self, mw, dictionary_name='Cambridge'):
         QDialog.__init__(self, mw, Qt.WindowType.Window)
         self.mw = mw
         self.form = Ui_Dialog()
         self.form.setupUi(self)
         self.form.buttonBox.accepted.connect(self.accept)
         self.form.buttonBox.rejected.connect(self.reject)
-        
-        # Load config
-        addon_dir = os.path.dirname(os.path.dirname(__file__))
-        with open(os.path.join(addon_dir, "config.json")) as f:
-            self.config = json.load(f)
-        
+
         # Set up word input
         self.form.wordInput.setPlaceholderText("Enter word")
         
         self.resize(400, 100)
-        self.setWindowTitle("Add from Cambridge Dictionary")
+        self.setWindowTitle(f"Add from {dictionary_name} Dictionary")
         
     def accept(self):
         super().accept()
