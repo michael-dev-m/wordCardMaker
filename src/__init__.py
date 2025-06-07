@@ -19,6 +19,7 @@ DEFAULT_LATEX_POST = '\\end{document}'
 AVAILABLE_IMAGE = '_available.jpg'
 SEPARATOR_IMG = '&nbsp;'
 SEPARATOR_EXAMPLES = '<br>'
+PRON_CAMBRIDGE = 'https://dictionary.cambridge.org/pronunciation/english/'
 
 
 addon_dir = os.path.dirname(__file__)
@@ -89,15 +90,19 @@ def get_or_create_note_model(config: dict):
     model['latex_post'] = DEFAULT_LATEX_POST
 
     # Create fields
-    fields = ["Word", "Images", "PartOfSpeech", "Definition", "Examples", "Audio",
-              "Translate", "PronUK", "AudioUK", "PronUS", "AudioUS", "Source"]
+    fields = ["Word", "Images", "PartOfSpeech", "Definition",
+              "FirstExample", "AudioOfTheFirstExample",
+              "SecondExample", "AudioOfTheSecondExample",
+              "ThirdExample", "AudioOfTheThirdExample",
+              "Translate", "TranscriptionUK", "AudioUK", "TranscriptionUS", "AudioUS",
+              "Source", "SourceOfPronunciation"]
     for field in fields:
         field_dict = mw.col.models.new_field(field)
         mw.col.models.add_field(model, field_dict)
 
     templates = [
         {
-            'name': 'Cloze Card',
+            'name': 'Cloze Card with tree examples',
             'qfmt': load_file_from_templates_folder("complete_sentences_front.xml"),
             'afmt': load_file_from_templates_folder("complete_sentences_back.xml")
         }
@@ -181,9 +186,7 @@ def fill_fields_out(note, card, index=0):
 
     note.fields[0] = f'{card.word}|{index + 1}|{card.pos}'  # Word
 
-    if not card.src_images:
-        note.fields[1] = f'<img src="{AVAILABLE_IMAGE}">'
-    else:
+    if card.src_images:
         filenames = []
         for url in card.src_images:
             filename = f"{card.word}_{card.pos}_{''.join(char for char in url if char.isdigit())}.jpeg"
@@ -196,24 +199,31 @@ def fill_fields_out(note, card, index=0):
 
     note.fields[3] = block['definition']  # Definitions
 
-    def get_unordered_list(lst):
-        return f"<ul><li>{'</li><li>'.join(lst)}</li></ul>" if len(lst) > 0 else ''
+    try:
+        note.fields[4] = block['examples'][0]  # Example0
+        note.fields[5] = ''  # Audio
+        note.fields[6] = block['examples'][1]  # Example1
+        note.fields[7] = ''  # Audio
+        note.fields[8] = block['examples'][2]  # Example2
+        note.fields[9] = ''  # Audio
+    except KeyError:
+        pass
+    except IndexError:
+        pass
 
-    note.fields[4] = get_unordered_list(block['examples'])  # Examples
+    note.fields[10] = block.setdefault('translate', '')  # Translate
 
-    note.fields[5] = ' '  # Audio
+    note.fields[11] = card.pron_uk  # PronUK
 
-    note.fields[6] = block.setdefault('translate', '')  # Translate
+    note.fields[12] = f"[sound:{download_file(card.src_uk_mp3, mw.col.media.dir(), f'{card.word}_uk.mp3')}]" if card.src_uk_mp3 else '' # AudioUK
 
-    note.fields[7] = card.pron_uk  # PronUK
+    note.fields[13] = card.pron_us  # PronUS
 
-    note.fields[8] = f"[sound:{download_file(card.src_uk_mp3, mw.col.media.dir(), f'{card.word}_uk.mp3')}]"  # AudioUK
+    note.fields[14] = f"[sound:{download_file(card.src_us_mp3, mw.col.media.dir(), f'{card.word}_us.mp3')}]" if card.src_us_mp3 else ''  # AudioUS
 
-    note.fields[9] = card.pron_us  # PronUS
+    note.fields[15] = f"<a href='{card.source}'>(Source)</a>" if card.source else ''  # Source
 
-    note.fields[10] = f"[sound:{download_file(card.src_us_mp3, mw.col.media.dir(), f'{card.word}_us.mp3')}]"  # AudioUS
-
-    note.fields[11] = card.source  # Source
+    note.fields[16] = f"<a href='{PRON_CAMBRIDGE}{card.word.split(' ')[0]}'>(CheckPronunciationCambridge)</a>"
 
     note.tags = [card.pos, card.word[0]]  # Tags
 
@@ -246,7 +256,7 @@ def add_word(word, dictionary_name):
         for card in cards:
             # make an insert {{c1: word}} for the fields of Definition and Examples
             card.cloze_anki()
-            askUser(card.__repr__())
+
             for index in range(len(card.data)):
                 #  Create new note
                 note = Note(mw.col, model)

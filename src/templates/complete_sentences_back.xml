@@ -2,23 +2,54 @@
 <script>document.getElementById('Deck').innerHTML="{{Deck}}".replace("::"," &minus; ");</script>
 
 {{Images}}
+
 <div>
-    <span>{{cloze:Definition}}
-        <a href="{{Source}}">(Source)</a>
+    <span>{{cloze:Definition}} {{Source}}
+        {{tts en_US voices=AwesomeTTS:cloze:Definition}}
     </span>
 </div>
 <div>
-    <span>{{cloze:Examples}}</span>
-    <span>{{Audio}}</span>
+    <span class='examples'>
+    <ul>
+        {{#FirstExample}}<li>
+            {{cloze:FirstExample}}
+            {{#AudioOfTheFirstExample}}
+                {{AudioOfTheFirstExample}}
+            {{/AudioOfTheFirstExample}}
+            {{^AudioOfTheFirstExample}}
+                {{tts en_US voices=AwesomeTTS:cloze:FirstExample}}
+            {{/AudioOfTheFirstExample}}
+        {{/FirstExample}}</li>
+        {{#SecondExample}}<li>
+            {{cloze:SecondExample}}
+            {{#AudioOfTheSecondExample}}
+                {{AudioOfTheSecondExample}}
+            {{/AudioOfTheSecondExample}}
+            {{^AudioOfTheSecondExample}}
+                {{tts en_US voices=AwesomeTTS:cloze:SecondExample}}
+            {{/AudioOfTheSecondExample}}
+        {{/SecondExample}}</li>
+        {{#ThirdExample}}<li>
+            {{cloze:ThirdExample}}
+            {{#AudioOfTheThirdExample}}
+                {{AudioOfTheThirdExample}}
+            {{/AudioOfTheThirdExample}}
+            {{^AudioOfTheThirdExample}}
+                {{tts en_US voices=AwesomeTTS:cloze:ThirdExample}}
+            {{/AudioOfTheThirdExample}}
+        {{/ThirdExample}}</li>
+    </ul>
+    </span>
 </div>
+
+<hr id='answer'>
 
 {{type:cloze:Definition}}
 
-<!hr id=answer>
-
 <div>
-    <span>{{PronUS}}</span>
+    <span>{{TranscriptionUS}}</span>
     <span>{{AudioUS}}</span>
+    <span>{{SourceOfPronunciation}}</span>
 </div>
 <div><span>{{Translate}}</span></div>
 </main>
