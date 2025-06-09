@@ -154,7 +154,7 @@ def add_pictures_from_langeek(query: str, cards: list):
 
 
 def get_oxford_card(query: str, def_limit: int):
-    parser = OxfordDict(query, dictionary_type='am-en', definition_limit=def_limit)
+    parser = OxfordDict(query, dictionary_type='en', definition_limit=def_limit)
     add_pictures_from_langeek(query, parser.cards)
     return parser.cards
 
@@ -191,7 +191,7 @@ def fill_fields_out(note, card, index=0):
         for url in card.src_images:
             filename = f"{card.word}_{card.pos}_{''.join(char for char in url if char.isdigit())}.jpeg"
             filenames.append(download_file(url, mw.col.media.dir(), filename))
-        note.fields[1] = SEPARATOR_IMG.join([f'<img src="{f}">' for f in filenames])
+        note.fields[1] = SEPARATOR_IMG.join([f'<img src="{f}" >' for f in filenames])
 
     note.fields[2] = card.pos  # PartOfSpeech
 
@@ -215,15 +215,17 @@ def fill_fields_out(note, card, index=0):
 
     note.fields[11] = card.pron_uk  # PronUK
 
-    note.fields[12] = f"[sound:{download_file(card.src_uk_mp3, mw.col.media.dir(), f'{card.word}_uk.mp3')}]" if card.src_uk_mp3 else '' # AudioUK
+    pron_uk_filename = download_file(card.src_uk_mp3, mw.col.media.dir(), f'{card.word}_uk.mp3')
+    note.fields[12] = f"[sound:{pron_uk_filename}]" if pron_uk_filename else '' # AudioUK
 
     note.fields[13] = card.pron_us  # PronUS
 
-    note.fields[14] = f"[sound:{download_file(card.src_us_mp3, mw.col.media.dir(), f'{card.word}_us.mp3')}]" if card.src_us_mp3 else ''  # AudioUS
+    pron_us_filename = download_file(card.src_us_mp3, mw.col.media.dir(), f'{card.word}_us.mp3')
+    note.fields[14] = f"[sound:{pron_us_filename}]" if pron_us_filename else ''  # AudioUS
 
-    note.fields[15] = f"<a href='{card.source}'>(Source)</a>" if card.source else ''  # Source
+    note.fields[15] = f"<a href='{card.source}' title='Go to a source of this definition'>(Source)</a>" if card.source else ''  # Source
 
-    note.fields[16] = f"<a href='{PRON_CAMBRIDGE}{card.word.split(' ')[0]}'>(CheckPronunciationCambridge)</a>"
+    note.fields[16] = f"<a href='{PRON_CAMBRIDGE}{card.word.split(' ')[0]}' title='Go to a page of pronunciation Cambridge'>(CheckPronunciation)</a>"
 
     note.tags = [card.pos, card.word[0]]  # Tags
 
