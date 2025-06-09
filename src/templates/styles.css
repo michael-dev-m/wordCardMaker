@@ -1,0 +1,67 @@
+.card {
+font-family: arial;
+line-height: 1.75em;
+font-size: 20px;
+text-align: center;
+color: black;
+background-color: #f3f3f3;
+}
+
+.Deck {
+position: absolute; top: 7px; left: 0px; width: 100%;
+}
+#Deck {
+font-size: 8pt; vertical-align: top; line-height: 10pt;
+}
+
+.cloze {
+font-weight: bold;
+color: blue;
+}
+
+#typeans {
+padding-top: 0.5em;
+text-align: center;
+max-width: 300px;
+}
+#typeans span {
+background-color: #f3f3f3;
+}
+input#typeans {
+border-radius: 9px
+}
+img {
+border-radius: 19px;
+width: 100%;
+max-width: 128px;
+}
+div span {
+max-width: 900px;
+display: inline-block;
+text-align: left;
+}
+.examples {
+font-style: italic;
+font-size: 18px;
+}
+
+/* solarize http://ethanschoonover.com/solarized
+* http://ospalh.github.io/anki-addons/Scalar.html
+* http://ospalh.github.io/anki-addons/Compare%20to%20kana.html
+*/
+
+.typeBad {
+color: #268bd2;
+font-weight:bold;
+font-size: 23px;
+}
+.typeMissed, .typePass {
+color: #dc322f;
+font-weight:bold;
+font-size: 23px;
+}
+.typeGood {
+color: #2ed85a;
+font-weight:bold;
+}
+

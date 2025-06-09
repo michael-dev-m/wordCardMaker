@@ -1,0 +1,28 @@
+<main>
+<script>document.getElementById('Deck').innerHTML="{{Deck}}".replace("::"," &minus; ");</script>
+
+{{Images}}
+
+<div>
+    <span>{{cloze:Definition}} {{Source}}
+        {{tts en_US voices=AwesomeTTS:cloze:Definition}}
+    </span>
+</div>
+<div>
+    <span class='examples'>
+    <ul>
+        {{#FirstExample}}<li>
+            {{cloze:FirstExample}}
+        {{/FirstExample}}</li>
+        {{#SecondExample}}<li>
+            {{cloze:SecondExample}}
+        {{/SecondExample}}</li>
+        {{#ThirdExample}}<li>
+            {{cloze:ThirdExample}}
+        {{/ThirdExample}}</li>
+    </ul>
+    </span>
+</div>
+
+{{type:cloze:Definition}}
+</main>
